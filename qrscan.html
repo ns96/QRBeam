@@ -77,6 +77,7 @@
         const textarea = document.getElementById('textarea');
         const copyButton = document.getElementById('copyButton');
         const plotButton = document.getElementById('plotButton');
+        const barPlotButton = document.getElementById('barPlotButton');
 
         function startVideoStream() {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -117,7 +118,7 @@
             oscillator.stop(audioContext.currentTime + 0.1); // Beep for 0.1 seconds
         }
 
-        function drawPlot(dataInput) {
+        function drawPlot(dataInput, type='scatter') {
             // Get the data from the textarea
             const lines = dataInput.trim().split("\n");
             const xValues = [];
@@ -132,21 +133,35 @@
                 }
             }
 
-            // Define the plot data
-            const trace = {
-                x: xValues,
-                y: yValues,
-                mode: 'markers',
-                type: 'scatter',
-                marker: { color: 'blue', size: 8 },
-                name: 'Data Points'
-            };
+            var trace;
+            var title;
 
+            if (type == 'bar') {
+                trace = {
+                    x: xValues,
+                    y: yValues,
+                    type: 'bar',
+                    marker: { color: 'blue' },
+                    name: 'Data Points'
+                };
+                title = 'Bar Plot';
+            } else {
+                trace = {
+                    x: xValues,
+                    y: yValues,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { color: 'blue', size: 8 },
+                    name: 'Data Points'
+                };
+                title = 'X-Y Data Plot';
+            }
+            
             const data = [trace];
 
             // Define the plot layout
             const layout = {
-                title: 'X-Y Data Plot',
+                title: 'Data Plot',
                 xaxis: { title: 'X Axis' },
                 yaxis: { title: 'Y Axis' },
                 margin: { l: 50, r: 50, t: 50, b: 50 },
@@ -174,9 +189,14 @@
         plotButton.addEventListener('click', () => {
             const data = textarea.value.trim();
             if (data) {
-                //const url = `https://quickchart.io/qr?text=${encodeURIComponent(data)}`;
-                //window.open(url, '_blank');
                 drawPlot(data);
+            }
+        });
+
+        barPlotButton.addEventListener('click', () => {
+            const data = textarea.value.trim();
+            if (data) {
+                drawPlot(data, 'bar');
             }
         });
 
