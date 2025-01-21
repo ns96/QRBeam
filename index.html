@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Data Sender</title>
+    <script src="js/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+        }
+        #inputArea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        #qrContainer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .qrCode {
+            margin: 20px;  /* Increased margin for better separation */
+            padding: 10px;
+            background-color: #fff;
+            text-align: center;  /* To center the number */
+            border: 1px solid #ddd;  /* Optional: Adds border around each QR code */
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .qrLabel {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #characterCount {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>QR Data Sender v0.1.0</h1>
+    <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
+    <button onclick="generateQRCodes()">Generate QR Codes</button>
+
+    <div id="qrContainer"></div>
+    <div id="characterCount"></div>
+
+    <script>
+        function generateQRCodes() {
+            const data = document.getElementById('inputArea').value;
+            //const maxSize = 200;  // Maximum characters per QR code
+            const maxLines = 10;  // Maximum lines per QR code
+            const qrContainer = document.getElementById('qrContainer');
+            const characterCount = document.getElementById('characterCount');
+            
+            qrContainer.innerHTML = "";  // Clear previous QR codes
+            characterCount.textContent = ""; // Clear previous character count
+            
+            
+            /* Split data into chunks based on the maxSize
+            let chunks = [];
+            for (let i = 0; i < data.length; i += maxSize) {
+                chunks.push(data.substring(i, i + maxSize));
+            }*/
+
+            // Split data into lines
+            const lines = data.split('\n');
+        
+            // Group lines into chunks based on the maxLines
+            let chunks = [];
+            for (let i = 0; i < lines.length; i += maxLines) {
+                chunks.push(lines.slice(i, i + maxLines).join('\n'));
+            }
+
+            // Generate QR code for each chunk of data
+            chunks.forEach((chunk, index) => {
+                const qrCodeDiv = document.createElement('div');
+                qrCodeDiv.classList.add('qrCode');
+                
+                // Create label for the QR code
+                const qrLabel = document.createElement('div');
+                qrLabel.classList.add('qrLabel');
+                qrLabel.textContent = `QR Code ${index + 1}`;  // Number the QR codes
+                qrCodeDiv.appendChild(qrLabel);
+
+                qrContainer.appendChild(qrCodeDiv);
+
+                // Create a canvas element for the QR code
+                const canvas = document.createElement('canvas');
+                qrCodeDiv.appendChild(canvas);
+
+                // Generate a QR code for each chunk and render it to the canvas
+                QRCode.toCanvas(canvas, chunk, { errorCorrectionLevel: 'H' }, function (error) {
+                    if (error) {
+                        console.error('Error generating QR code:', error);
+                    }
+                });
+            });
+
+            // Display the total number of characters processed
+            characterCount.textContent = `Total characters processed: ${data.length}`;
+        }
+    </script>
+
+</body>
+</html>
