@@ -47,7 +47,7 @@
             background-color: #45a049;
         }
 
-        #plotButton {
+        .plotButton {
             display: block;
             margin: 10px auto;
             padding: 10px 20px;
@@ -57,7 +57,7 @@
             cursor: pointer;
             font-size: 16px;
         }
-        #plotButton:hover {
+        .plotButton:hover {
             background-color: #ffcc00;
         }
     </style>
@@ -68,7 +68,8 @@
     <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
     <button id="copyButton">Copy to Clipboard</button> 
     <button id="clearButton">Clear</button> 
-    <button id="plotButton">Plot</button> 
+    <button id="plotButton" class="plotButton">XY Plot</button> 
+    <button id="barPlotButton" class="plotButton">Bar Plot</button> 
     <div id="plot"></div>
     
     <script>
@@ -167,6 +168,7 @@
 
         clearButton.addEventListener('click', () => {
             textarea.value = '';
+            document.getElementById('plot').innerHTML = '';
         });
 
         plotButton.addEventListener('click', () => {

@@ -56,7 +56,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v0.2.0</h1>
+    <h1>QR Data Sender v0.2.1</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
     <button onclick="clearQRCodes()">Clear</button>
@@ -68,7 +68,7 @@
         function generateQRCodes() {
             const data = document.getElementById('inputArea').value;
             //const maxSize = 200;  // Maximum characters per QR code
-            const maxLines = 10;  // Maximum lines per QR code
+            var maxLines = 10;  // Maximum lines per QR code
             const qrContainer = document.getElementById('qrContainer');
             const characterCount = document.getElementById('characterCount');
             
@@ -84,6 +84,12 @@
 
             // Split data into lines
             const lines = data.split('\n');
+
+            let lineCount = lines.length;
+            if (lineCount <= 2*maxLines) {
+                maxLines = Math.ceil(lineCount/2);
+                console.log("maxLines: " + maxLines);
+            }
         
             // Group lines into chunks based on the maxLines
             let chunks = [];
