@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         #video {
             border: 1px solid black;
             width: 100%;
-            max-width: 500px;
+            max-width: 400px;
             display: block;
             margin: 10px auto;
         }
@@ -45,6 +46,20 @@
         #clearButton:hover {
             background-color: #45a049;
         }
+
+        #plotButton {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 20px;
+            background-color: #ffd000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #plotButton:hover {
+            background-color: #ffcc00;
+        }
     </style>
 </head>
 <body>
@@ -53,11 +68,14 @@
     <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
     <button id="copyButton">Copy to Clipboard</button> 
     <button id="clearButton">Clear</button> 
-
+    <button id="plotButton">Plot</button> 
+    <div id="plot"></div>
+    
     <script>
         const video = document.getElementById('video');
         const textarea = document.getElementById('textarea');
         const copyButton = document.getElementById('copyButton');
+        const plotButton = document.getElementById('plotButton');
 
         function startVideoStream() {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -98,6 +116,45 @@
             oscillator.stop(audioContext.currentTime + 0.1); // Beep for 0.1 seconds
         }
 
+        function drawPlot(dataInput) {
+            // Get the data from the textarea
+            const lines = dataInput.trim().split("\n");
+            const xValues = [];
+            const yValues = [];
+
+            // Parse the data into X and Y arrays
+            for (const line of lines) {
+                const [x, y] = line.split(/[\t,]/).map(Number);
+                if (!isNaN(x) && !isNaN(y)) {
+                    xValues.push(x);
+                    yValues.push(y);
+                }
+            }
+
+            // Define the plot data
+            const trace = {
+                x: xValues,
+                y: yValues,
+                mode: 'markers',
+                type: 'scatter',
+                marker: { color: 'blue', size: 8 },
+                name: 'Data Points'
+            };
+
+            const data = [trace];
+
+            // Define the plot layout
+            const layout = {
+                title: 'X-Y Data Plot',
+                xaxis: { title: 'X Axis' },
+                yaxis: { title: 'Y Axis' },
+                margin: { l: 50, r: 50, t: 50, b: 50 },
+            };
+
+            // Render the plot in the div with id="plot"
+            Plotly.newPlot('plot', data, layout);
+        }    
+
         video.addEventListener('loadeddata', () => {
             setInterval(scanQRCode, 500);
         });
@@ -110,6 +167,15 @@
 
         clearButton.addEventListener('click', () => {
             textarea.value = '';
+        });
+
+        plotButton.addEventListener('click', () => {
+            const data = textarea.value.trim();
+            if (data) {
+                //const url = `https://quickchart.io/qr?text=${encodeURIComponent(data)}`;
+                //window.open(url, '_blank');
+                drawPlot(data);
+            }
         });
 
         startVideoStream();

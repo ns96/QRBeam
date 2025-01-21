@@ -56,9 +56,10 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v0.1.0</h1>
+    <h1>QR Data Sender v0.2.0</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
+    <button onclick="clearQRCodes()">Clear</button>
 
     <div id="qrContainer"></div>
     <div id="characterCount"></div>
@@ -117,6 +118,12 @@
 
             // Display the total number of characters processed
             characterCount.textContent = `Total characters processed: ${data.length}`;
+        }
+
+        function clearQRCodes() {
+            document.getElementById('inputArea').value = "";
+            document.getElementById('qrContainer').innerHTML = "";
+            document.getElementById('characterCount').textContent = "";
         }
     </script>
 
