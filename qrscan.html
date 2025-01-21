@@ -63,8 +63,9 @@
     </style>
 </head>
 <body>
-    <h1>QR Code Scanner</h1>
+    <h1>QR Code Scanner v0.2.4</h1>
     <video id="video" autoplay></video>
+    <div id="qrmessage"></div>
     <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
     <button id="copyButton">Copy to Clipboard</button> 
     <button id="clearButton">Clear</button> 
@@ -75,9 +76,13 @@
     <script>
         const video = document.getElementById('video');
         const textarea = document.getElementById('textarea');
+        const messageElement = document.getElementById('qrmessage');
+        const clearButton = document.getElementById('clearButton');
         const copyButton = document.getElementById('copyButton');
+        const plotArea = document.getElementById('plot');
         const plotButton = document.getElementById('plotButton');
         const barPlotButton = document.getElementById('barPlotButton');
+        var qrCodeNumber = 0;
 
         function startVideoStream() {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
@@ -103,6 +108,9 @@
                 const existingText = textarea.value;
                 if (!existingText.includes(code.data)) {
                     textarea.value += code.data + '\n';
+                    
+                    qrCodeNumber++;
+                    messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
                     playBeep();
                 }
             }
@@ -126,25 +134,33 @@
 
             // Parse the data into X and Y arrays
             for (const line of lines) {
-                const [x, y] = line.split(/[\t,]/).map(Number);
-                if (!isNaN(x) && !isNaN(y)) {
-                    xValues.push(x);
-                    yValues.push(y);
+                if(type == 'bar') {
+                    const [x, y] = line.split(/[\t,]/);
+                    if (x && !isNaN(Number(y))) {
+                        xValues.push(x);
+                        yValues.push(Number(y));
+                    }
+
+                } else {
+                    const [x, y] = line.split(/[\t,]/).map(Number);
+                    if (!isNaN(x) && !isNaN(y)) {
+                        xValues.push(x);
+                        yValues.push(y);
+                    }
                 }
             }
 
             var trace;
-            var title;
+            var plotTitle;
 
             if (type == 'bar') {
                 trace = {
                     x: xValues,
                     y: yValues,
-                    type: 'bar',
-                    marker: { color: 'blue' },
-                    name: 'Data Points'
+                    type: 'bar'
                 };
-                title = 'Bar Plot';
+
+                plotTitle = 'Bar Plot';
             } else {
                 trace = {
                     x: xValues,
@@ -154,17 +170,17 @@
                     marker: { color: 'blue', size: 8 },
                     name: 'Data Points'
                 };
-                title = 'X-Y Data Plot';
+                
+                plotTitle = 'X-Y Data Plot';
             }
             
             const data = [trace];
 
             // Define the plot layout
             const layout = {
-                title: 'Data Plot',
+                title: plotTitle,
                 xaxis: { title: 'X Axis' },
-                yaxis: { title: 'Y Axis' },
-                margin: { l: 50, r: 50, t: 50, b: 50 },
+                yaxis: { title: 'Y Axis' }
             };
 
             // Render the plot in the div with id="plot"
@@ -183,7 +199,9 @@
 
         clearButton.addEventListener('click', () => {
             textarea.value = '';
-            document.getElementById('plot').innerHTML = '';
+            messageElement.textContent = '';
+            qrCodeNumber = 0;
+            plotArea.innerHTML = '';
         });
 
         plotButton.addEventListener('click', () => {
