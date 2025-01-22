@@ -153,9 +153,9 @@
                             qrCodeNumber++;
                             messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
                             playBeep();
-                            drawBox(code, 'green');
                         } else {
                             messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
+                            drawBox(code, 'red');
                         }
                     } 
 
