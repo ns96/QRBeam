@@ -84,7 +84,7 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v1.1.0</h1>
+    <h1>Data Scanner v1.1.2</h1>
     <div class="main">
         <video id="video" autoplay></video>
         <canvas id="canvas"></canvas>
@@ -156,14 +156,16 @@
                             playBeep();
                         } else {
                             messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
-                            color = 'yellow';
+                            color = 'red';
                         }
                     } else {
-                        messageElement.textContent = 'Duplicate QR Code';
-                        color = 'red';
+                        color = 'yellow';
+                        if(scanedData && scanedData.length > 0) {
+                            messageElement.textContent = `Waiting for QR Code# ${qrCodeNumber + 1}`;
+                        }
                     }
 
-                    console.log("Scanned QR Code Data: ", scanedData);
+                    //console.log("Scanned QR Code Data: ", scanedData);
                     drawBox(code, color);
                 }
             }
