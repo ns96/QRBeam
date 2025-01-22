@@ -155,13 +155,12 @@
                             playBeep();
                             drawBox(code, 'green');
                         } else {
-                            drawBox(code, 'yellow');
                             messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
                         }
                     } 
 
                     console.log("Scanned QR Code Data: ", scanedData);
-                    drawBox(code, 'red');
+                    drawBox(code, 'yellow');
                 }
             }
 
