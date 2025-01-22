@@ -4,21 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Code Scanner</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
+        .main {
+            text-align: center;
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto;
+            place-items: center;
+        }
+
         #video {
             border: 1px solid black;
             width: 100%;
             max-width: 400px;
-            display: block;
             margin: 10px auto;
+            z-index: -1;
+            grid-area: 1 / 1;
         }
+
+        #canvas {
+            border: 1px solid black;
+            width: 100%;
+            max-width: 400px;
+            margin: 10px auto;
+            grid-area: 1 / 1;
+        }
+
         #textarea {
             width: 100%;
             height: 200px;
             margin-top: 10px;
         }
+        
         #copyButton {
             display: block;
             margin: 10px auto;
@@ -29,6 +48,7 @@
             cursor: pointer;
             font-size: 16px;
         }
+        
         #copyButton:hover {
             background-color: #45a049;
         }
@@ -43,6 +63,7 @@
             cursor: pointer;
             font-size: 16px;
         }
+        
         #clearButton:hover {
             background-color: #45a049;
         }
@@ -63,18 +84,23 @@
     </style>
 </head>
 <body>
-    <h1>QR Code Scanner v1.0.0</h1>
-    <video id="video" autoplay></video>
-    <div id="qrmessage"></div>
-    <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
-    <button id="copyButton">Copy to Clipboard</button> 
-    <button id="clearButton">Clear</button> 
-    <button id="plotButton" class="plotButton">XY Plot</button> 
-    <button id="barPlotButton" class="plotButton">Bar Plot</button> 
+    <h1>QR Code Scanner v1.1.0</h1>
+    <div class="main">
+        <video id="video" autoplay></video>
+        <canvas id="canvas"></canvas>
+        <div id="qrmessage"></div>
+        <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
+        <button id="copyButton">Copy to Clipboard</button> 
+        <button id="clearButton">Clear</button> 
+        <button id="plotButton" class="plotButton">XY Plot</button> 
+        <button id="barPlotButton" class="plotButton">Bar Plot</button> 
     <div id="plot"></div>
+    </div>
     
     <script>
         const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
         const textarea = document.getElementById('textarea');
         const messageElement = document.getElementById('qrmessage');
         const clearButton = document.getElementById('clearButton');
@@ -82,48 +108,64 @@
         const plotArea = document.getElementById('plot');
         const plotButton = document.getElementById('plotButton');
         const barPlotButton = document.getElementById('barPlotButton');
-        
         var qrCodeNumber = 0;
 
-        function startVideoStream() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                .then(stream => {
-                    video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error("Error accessing camera: ", err);
-                });
+        // Access the user's camera
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
+            video.srcObject = stream;
+            video.play();
+        }).catch(err => {
+            console.error("Error accessing camera: ", err);
+        });
+
+        function drawBox(code, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(code.location.topLeftCorner.x, code.location.topLeftCorner.y);
+            ctx.lineTo(code.location.topRightCorner.x, code.location.topRightCorner.y);
+            ctx.lineTo(code.location.bottomRightCorner.x, code.location.bottomRightCorner.y);
+            ctx.lineTo(code.location.bottomLeftCorner.x, code.location.bottomLeftCorner.y);
+            ctx.closePath();
+            ctx.stroke();
         }
 
         function scanQRCode() {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
 
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
 
-            if (code) {
-                const existingText = textarea.value;
-                let scanedData = code.data;
+                if (code) {
+                    const existingText = textarea.value;
+                    let scanedData = code.data;
 
-                // we need to extract the QR code number, first 3 characters, from the scanned data
-                let scanNumber = Number(scanedData.substring(0, 3));
-                scanedData = scanedData.substring(3);
+                    // we need to extract the QR code number, first 3 characters, from the scanned data
+                    let scanNumber = Number(scanedData.substring(0, 3));
+                    scanedData = scanedData.substring(3);
 
-                if (!existingText.includes(scanedData)) {
-                    if(scanNumber == qrCodeNumber) {
-                        textarea.value += scanedData + '\n';                    
-                        qrCodeNumber++;
-                        messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
-                        playBeep();
-                    } else {
-                        messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
-                    }
+                    if (!existingText.includes(scanedData)) {
+                        if(scanNumber == qrCodeNumber) {
+                            textarea.value += scanedData + '\n';                    
+                            qrCodeNumber++;
+                            messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
+                            playBeep();
+                            drawBox(code, 'green');
+                        } else {
+                            drawBox(code, 'yellow');
+                            messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
+                        }
+                    } 
+
+                    console.log("Scanned QR Code Data: ", scanedData);
+                    drawBox(code, 'red');
                 }
             }
+
+            requestAnimationFrame(scanQRCode);
         }
 
         function playBeep() {
@@ -197,9 +239,7 @@
             Plotly.newPlot('plot', data, layout);
         }    
 
-        video.addEventListener('loadeddata', () => {
-            setInterval(scanQRCode, 500);
-        });
+        video.addEventListener('play', scanQRCode);
 
         copyButton.addEventListener('click', () => {
             textarea.select();
@@ -227,8 +267,6 @@
                 drawPlot(data, 'bar');
             }
         });
-
-        startVideoStream();
     </script>
 </body>
 </html>
