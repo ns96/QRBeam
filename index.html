@@ -56,7 +56,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v0.2.4</h1>
+    <h1>QR Data Sender v0.2.5</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
     <button onclick="clearQRCodes()">Clear</button>
@@ -99,6 +99,7 @@
 
             // Generate QR code for each chunk of data
             chunks.forEach((chunk, index) => {
+                // Create a container for each QR code
                 const qrCodeDiv = document.createElement('div');
                 qrCodeDiv.classList.add('qrCode');
                 
@@ -114,6 +115,10 @@
                 const canvas = document.createElement('canvas');
                 qrCodeDiv.appendChild(canvas);
 
+                // add the index to the qrcode to be able to reassamble the data in the correct order
+                chunk = pad(index, 3) + chunk;
+                //console.log(chunk);
+
                 // Generate a QR code for each chunk and render it to the canvas
                 QRCode.toCanvas(canvas, chunk, { errorCorrectionLevel: 'H' }, function (error) {
                     if (error) {
@@ -124,6 +129,13 @@
 
             // Display the total number of characters processed
             characterCount.textContent = `Total characters processed: ${data.length}`;
+        }
+
+        // function  to left zero pad a number
+        function pad(num, size) {
+            var s = num + "";
+            while (s.length < size) s = "0" + s;
+            return s;
         }
 
         function clearQRCodes() {
