@@ -63,7 +63,7 @@
     </style>
 </head>
 <body>
-    <h1>QR Code Scanner v0.2.5</h1>
+    <h1>QR Code Scanner v0.2.6</h1>
     <video id="video" autoplay></video>
     <div id="qrmessage"></div>
     <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
@@ -120,7 +120,7 @@
                         messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
                         playBeep();
                     } else {
-                        messageElement.textContent = `Out of sequence QR Code# ${scanNumber}. Expected QR Code# ${qrCodeNumber}`;
+                        messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
                     }
                 }
             }
