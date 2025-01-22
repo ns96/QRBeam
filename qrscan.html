@@ -142,6 +142,7 @@
                 if (code) {
                     const existingText = textarea.value;
                     let scanedData = code.data;
+                    let color = 'green';
 
                     // we need to extract the QR code number, first 3 characters, from the scanned data
                     let scanNumber = Number(scanedData.substring(0, 3));
@@ -155,12 +156,15 @@
                             playBeep();
                         } else {
                             messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
-                            drawBox(code, 'red');
+                            color = 'yellow';
                         }
-                    } 
+                    } else {
+                        messageElement.textContent = 'Duplicate QR Code';
+                        color = 'red';
+                    }
 
                     console.log("Scanned QR Code Data: ", scanedData);
-                    drawBox(code, 'yellow');
+                    drawBox(code, color);
                 }
             }
 
