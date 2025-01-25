@@ -56,7 +56,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v1.2.0</h1>
+    <h1>QR Data Sender v1.2.1</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
     <button onclick="clearQRCodes()">Clear</button>
@@ -154,6 +154,7 @@
             document.getElementById('inputArea').value = "";
             document.getElementById('qrContainer').innerHTML = "";
             document.getElementById('characterCount').textContent = "";
+            displayQRForScanner();
         }
 
         // Display QR code for the scanner
