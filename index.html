@@ -56,7 +56,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v1.1.0</h1>
+    <h1>QR Data Sender v1.2.0</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
     <button onclick="clearQRCodes()">Clear</button>
@@ -74,13 +74,6 @@
             
             qrContainer.innerHTML = "";  // Clear previous QR codes
             characterCount.textContent = ""; // Clear previous character count
-            
-            
-            /* Split data into chunks based on the maxSize
-            let chunks = [];
-            for (let i = 0; i < data.length; i += maxSize) {
-                chunks.push(data.substring(i, i + maxSize));
-            }*/
 
             // Split data into lines
             const lines = data.split('\n');
@@ -131,6 +124,25 @@
             characterCount.textContent = `Total characters processed: ${data.length}`;
         }
 
+        // add function to display qrcode which links to the qrscan.html page
+        function displayQRForScanner() {
+            const qrContainer = document.getElementById('qrContainer');
+            const qrCodeDiv = document.createElement('div');
+            qrCodeDiv.classList.add('qrCode');
+            qrContainer.appendChild(qrCodeDiv);
+
+            // Create a canvas element for the QR code 
+            const canvas = document.createElement('canvas');
+            qrCodeDiv.appendChild(canvas);  
+
+            // Generate a QR code for the data and render it to the canvas
+            QRCode.toCanvas(canvas, 'https://ns96.github.io/QRBeam/qrscan.html', { errorCorrectionLevel: 'H' }, function (error) {
+                if (error) {
+                    console.error('Error generating QR code:', error);
+                }
+            });
+        } 
+
         // function  to left zero pad a number
         function pad(num, size) {
             var s = num + "";
@@ -143,6 +155,9 @@
             document.getElementById('qrContainer').innerHTML = "";
             document.getElementById('characterCount').textContent = "";
         }
+
+        // Display QR code for the scanner
+        displayQRForScanner();
     </script>
 
 </body>

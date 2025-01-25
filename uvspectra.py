@@ -15,12 +15,12 @@ wavelengths = np.linspace(200, 800, 100)
 
 # Absorption spectrum parameters
 abs_peak = 450  # peak wavelength for absorption (nm)
-abs_width = 20   # width of the absorption peak
+abs_width = 75   # width of the absorption peak
 absorption = generate_absorption_spectrum(wavelengths, abs_peak, abs_width)
 
 # Emission spectrum parameters
-ems_peak = 500  # peak wavelength for emission (nm)
-ems_width = 25   # width of the emission peak
+ems_peak = 625  # peak wavelength for emission (nm)
+ems_width = 100   # width of the emission peak
 emission = generate_emission_spectrum(wavelengths, ems_peak, ems_width)
 
 # Add randomness to the data

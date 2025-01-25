@@ -84,7 +84,7 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v1.1.2</h1>
+    <h1>Data Scanner v1.2.0</h1>
     <div class="main">
         <video id="video" autoplay></video>
         <canvas id="canvas"></canvas>
@@ -93,6 +93,7 @@
         <button id="copyButton">Copy to Clipboard</button> 
         <button id="clearButton">Clear</button> 
         <button id="plotButton" class="plotButton">XY Plot</button> 
+        <button id="plotButton2" class="plotButton">XYY Plot</button> 
         <button id="barPlotButton" class="plotButton">Bar Plot</button> 
     <div id="plot"></div>
     </div>
@@ -107,7 +108,9 @@
         const copyButton = document.getElementById('copyButton');
         const plotArea = document.getElementById('plot');
         const plotButton = document.getElementById('plotButton');
+        const plotButton2 = document.getElementById('plotButton2');
         const barPlotButton = document.getElementById('barPlotButton');
+
         var qrCodeNumber = 0;
 
         // Access the user's camera
@@ -183,11 +186,12 @@
             oscillator.stop(audioContext.currentTime + 0.1); // Beep for 0.1 seconds
         }
 
-        function drawPlot(dataInput, type='scatter') {
+        function drawPlot(dataInput, type='xy') {
             // Get the data from the textarea
             const lines = dataInput.trim().split("\n");
             const xValues = [];
             const yValues = [];
+            const y2Values = [];
 
             // Parse the data into X and Y arrays
             for (const line of lines) {
@@ -198,6 +202,13 @@
                         yValues.push(Number(y));
                     }
 
+                } else if (type == 'xyy') {
+                    const [x, y, y2] = line.split(/[\t,]/).map(Number);
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(y2)) {
+                        xValues.push(x);
+                        yValues.push(y);
+                        y2Values.push(y2);
+                    }                        
                 } else {
                     const [x, y] = line.split(/[\t,]/).map(Number);
                     if (!isNaN(x) && !isNaN(y)) {
@@ -208,6 +219,7 @@
             }
 
             var trace;
+            var trace2;
             var plotTitle;
 
             if (type == 'bar') {
@@ -218,11 +230,29 @@
                 };
 
                 plotTitle = 'Bar Plot';
+            } if(type == 'xyy') {
+                trace = {
+                    x: xValues,
+                    y: yValues,
+                    mode: 'lines+markers',
+                    type: 'scatter',
+                    name: 'Y1'
+                };
+
+                trace2 = {
+                    x: xValues,
+                    y: y2Values,
+                    mode: 'lines+markers',
+                    type: 'scatter',
+                    name: 'Y2'
+                };
+
+                plotTitle = 'X-Y2 Data Plot';  
             } else {
                 trace = {
                     x: xValues,
                     y: yValues,
-                    mode: 'markers',
+                    mode: 'lines+markers',
                     type: 'scatter',
                     marker: { color: 'blue', size: 8 },
                     name: 'Data Points'
@@ -231,7 +261,10 @@
                 plotTitle = 'X-Y Data Plot';
             }
             
-            const data = [trace];
+            var data = [trace];
+            if(trace2) {
+                data = [trace, trace2];
+            }
 
             // Define the plot layout
             const layout = {
@@ -263,6 +296,13 @@
             const data = textarea.value.trim();
             if (data) {
                 drawPlot(data);
+            }
+        });
+
+        plotButton2.addEventListener('click', () => {
+            const data = textarea.value.trim();
+            if (data) {
+                drawPlot(data, 'xyy');
             }
         });
 
