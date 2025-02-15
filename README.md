@@ -8,10 +8,10 @@ This web application leverages the camera capabilities of smartphones to decode 
 Download the [latest release](https://github.com/ns96/QRBeam/releases), then unzip QRBeam.zip on a computer with data to be transferred. Next, open the QRBeam folder, then double-click on the index.html file. This will open the page which allows for encoding data, as well as provide a QR code which links to the companion decoding web page to be opened on the smartphone.
 
 ## Known Issues
-On Apple phones, the decoding web page doesn't seem to work correctly with the camera not loading into page. The page does load correctly on an iPad though.
+On iPhones, the decoding web page may not work correctly with the camera not loading into page. The page does load correctly on an iPad though.
 
 ## Acknowledgements
-This app would not be possible without the use of the excellent JavaScript libraries for processing QR Codes, and ofcourse the various LLM coding models which wrote most of the code.
+This app would not be possible without the use of the excellent JavaScript libraries for processing QR Codes, and ofcourse various LLM coding models use for code generation.
 
 * [QRCode.js](https://github.com/davidshimjs/qrcodejs)
 * [jsQR](https://github.com/cozmo/jsQR)
