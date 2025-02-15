@@ -56,7 +56,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v1.2.1</h1>
+    <h1>QR Data Sender v1.2.2</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
     <button onclick="clearQRCodes()">Clear</button>
@@ -141,6 +141,12 @@
                     console.error('Error generating QR code:', error);
                 }
             });
+
+            // add element to display the link to the reduce.html page in new tab
+            const reducerLink = document.createElement('div');
+            reducerLink.classList.add('qrLabel');
+            reducerLink.innerHTML = '<a target="_blank" href="reduce.html">Open Data Reducer</a>';
+            qrCodeDiv.appendChild(reducerLink);
         } 
 
         // function  to left zero pad a number
