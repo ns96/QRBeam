@@ -38,7 +38,7 @@
             margin-top: 10px;
         }
         
-        #copyButton {
+        #copyButton, #clearButton, #saveButton {
             display: block;
             margin: 10px auto;
             padding: 10px 20px;
@@ -49,22 +49,7 @@
             font-size: 16px;
         }
         
-        #copyButton:hover {
-            background-color: #45a049;
-        }
-
-        #clearButton {
-            display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        
-        #clearButton:hover {
+        #copyButton:hover, #clearButton:hover, #saveButton:hover {
             background-color: #45a049;
         }
 
@@ -92,10 +77,11 @@
         <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
         <button id="copyButton">Copy to Clipboard</button> 
         <button id="clearButton">Clear</button> 
+        <button id="saveButton">Save to File</button>
         <button id="plotButton" class="plotButton">XY Plot</button> 
         <button id="plotButton2" class="plotButton">XYY Plot</button> 
         <button id="barPlotButton" class="plotButton">Bar Plot</button> 
-    <div id="plot"></div>
+        <div id="plot"></div>
     </div>
     
     <script>
@@ -106,6 +92,7 @@
         const messageElement = document.getElementById('qrmessage');
         const clearButton = document.getElementById('clearButton');
         const copyButton = document.getElementById('copyButton');
+        const saveButton = document.getElementById('saveButton');
         const plotArea = document.getElementById('plot');
         const plotButton = document.getElementById('plotButton');
         const plotButton2 = document.getElementById('plotButton2');
@@ -290,6 +277,21 @@
             messageElement.textContent = '';
             qrCodeNumber = 0;
             plotArea.innerHTML = '';
+        });
+
+        saveButton.addEventListener('click', () => {
+            const data = textarea.value.trim();
+            if (data) {
+                const blob = new Blob([data], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'scanned_data.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
         });
 
         plotButton.addEventListener('click', () => {
