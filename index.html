@@ -41,6 +41,18 @@
             margin-bottom: 20px;
             cursor: pointer;
         }
+        .buttonRow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .buttonRow button {
+            flex: 1 1 0;
+            width: auto;
+            min-width: 140px;
+            margin-bottom: 0;
+        }
         .qrLabel {
             font-size: 14px;
             font-weight: bold;
@@ -52,45 +64,121 @@
             margin-top: 10px;
             text-align: center;
         }
+        #playDialog {
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            background-color: #fff;
+        }
+        #playDialog::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+        }
+        #playLabel {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #playCanvas {
+            width: min(70vh, 80vw);
+            height: min(70vh, 80vw);
+            background-color: #fff;
+        }
+        #playDialog button {
+            display: inline-block;
+            width: auto;
+            margin: 6px;
+        }
+        #playDialog button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+        .playControls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 12px;
+        }
+        .speedControl {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        #speedSelect {
+            padding: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <h1>QR Data Sender v2.0.0 (10/17/2026)</h1>
+    <h1>QR Data Sender v2.1.0 (10/17/2026)</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
-    <button onclick="generateQRCodes()">Generate QR Codes</button>
-    <button onclick="clearQRCodes()">Clear</button>
-    <button onclick="document.getElementById('fileInput').click()">Open CSV/TSV File</button>
+    <div class="buttonRow">
+        <button onclick="generateQRCodes()">Generate QR Codes</button>
+        <button onclick="clearQRCodes()">Clear</button>
+        <button onclick="document.getElementById('fileInput').click()">Open CSV/TSV File</button>
+        <button onclick="playQRCodes()">Play QR</button>
+    </div>
     <input type="file" id="fileInput" accept=".csv,.tsv,text/csv,text/tab-separated-values" style="display: none;">
 
     <div id="qrContainer"></div>
     <div id="characterCount"></div>
 
+    <dialog id="playDialog">
+        <div id="playLabel">QR Code 1 of 1</div>
+        <canvas id="playCanvas"></canvas>
+        <div class="playControls">
+            <label class="speedControl" for="speedSelect">Speed
+                <select id="speedSelect">
+                    <option value="100">0.1 s</option>
+                    <option value="250">0.25 s</option>
+                    <option value="500">0.5 s</option>
+                    <option value="1000" selected>1 s</option>
+                </select>
+            </label>
+            <button id="backButton">Back</button>
+            <button id="startButton">Start</button>
+            <button id="pauseButton" disabled>Pause</button>
+            <button id="closePlayButton">Close</button>
+        </div>
+    </dialog>
+
     <script>
+        // Build the sequence-numbered chunks that are encoded into QR codes
+        function getQRChunks(data) {
+            var maxLines = 10;  // Maximum lines per QR code
+            const lines = data.split('\n');
+
+            const lineCount = lines.length;
+            if (lineCount <= 2*maxLines) {
+                maxLines = Math.ceil(lineCount/2);
+            }
+
+            // Group lines into chunks based on the maxLines
+            const chunks = [];
+            for (let i = 0; i < lines.length; i += maxLines) {
+                chunks.push(lines.slice(i, i + maxLines).join('\n'));
+            }
+
+            // add the index to the qrcode to be able to reassemble the data in the correct order
+            return chunks.map((chunk, index) => pad(index, 3) + chunk);
+        }
+
         function generateQRCodes() {
             const data = document.getElementById('inputArea').value;
-            //const maxSize = 200;  // Maximum characters per QR code
-            var maxLines = 10;  // Maximum lines per QR code
             const qrContainer = document.getElementById('qrContainer');
             const characterCount = document.getElementById('characterCount');
             
             qrContainer.innerHTML = "";  // Clear previous QR codes
             characterCount.textContent = ""; // Clear previous character count
 
-            // Split data into lines
-            const lines = data.split('\n');
-
-            let lineCount = lines.length;
-            if (lineCount <= 2*maxLines) {
-                maxLines = Math.ceil(lineCount/2);
-                console.log("maxLines: " + maxLines);
-            }
-        
-            // Group lines into chunks based on the maxLines
-            let chunks = [];
-            for (let i = 0; i < lines.length; i += maxLines) {
-                chunks.push(lines.slice(i, i + maxLines).join('\n'));
-            }
+            const chunks = getQRChunks(data);
 
             // Generate QR code for each chunk of data
             chunks.forEach((chunk, index) => {
@@ -110,10 +198,6 @@
                 const canvas = document.createElement('canvas');
                 qrCodeDiv.appendChild(canvas);
 
-                // add the index to the qrcode to be able to reassamble the data in the correct order
-                chunk = pad(index, 3) + chunk;
-                //console.log(chunk);
-
                 // Generate a QR code for each chunk and render it to the canvas
                 QRCode.toCanvas(canvas, chunk, { errorCorrectionLevel: 'H' }, function (error) {
                     if (error) {
@@ -125,6 +209,127 @@
             // Display the total number of characters processed
             characterCount.textContent = `Total characters processed: ${data.length}`;
         }
+
+        // Sequentially display the generated QR codes so a stationary camera can read them
+        const playDialog = document.getElementById('playDialog');
+        const playCanvas = document.getElementById('playCanvas');
+        const playLabel = document.getElementById('playLabel');
+        const backButton = document.getElementById('backButton');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const speedSelect = document.getElementById('speedSelect');
+        let playIntervalMs = Number(speedSelect.value);
+        let playingChunks = [];
+        let playIndex = 0;
+        let playTimer = null;
+
+        function renderPlayFrame() {
+            playLabel.textContent = `QR Code ${playIndex + 1} of ${playingChunks.length}`;
+            QRCode.toCanvas(playCanvas, playingChunks[playIndex], {
+                errorCorrectionLevel: 'H',
+                width: 640,
+                margin: 4
+            }, function (error) {
+                if (error) {
+                    console.error('Error generating QR code:', error);
+                }
+            });
+        }
+
+        function startPlayTimer() {
+            if (playTimer !== null) {
+                clearInterval(playTimer);
+            }
+            playTimer = setInterval(() => {
+                playIndex = (playIndex + 1) % playingChunks.length;
+                renderPlayFrame();
+            }, playIntervalMs);
+        }
+
+        function pausePlayback() {
+            if (playTimer !== null) {
+                clearInterval(playTimer);
+                playTimer = null;
+            }
+        }
+
+        function updatePlaybackButtons() {
+            const playing = playTimer !== null;
+            startButton.disabled = playing;
+            pauseButton.disabled = !playing;
+        }
+
+        function playQRCodes() {
+            const characterCount = document.getElementById('characterCount');
+            const data = document.getElementById('inputArea').value;
+
+            if (!data) {
+                characterCount.textContent = 'Nothing to play - enter or open data first.';
+                return;
+            }
+
+            // Show the first QR code and wait for Start so the phone can be aligned
+            playingChunks = getQRChunks(data);
+            playIndex = 0;
+            pausePlayback();
+            renderPlayFrame();
+            updatePlaybackButtons();
+
+            if (!playDialog.open) {
+                playDialog.showModal();
+            }
+        }
+
+        function stopPlayback() {
+            pausePlayback();
+            playingChunks = [];
+            if (playDialog.open) {
+                playDialog.close();
+            }
+        }
+
+        document.getElementById('closePlayButton').addEventListener('click', stopPlayback);
+
+        startButton.addEventListener('click', () => {
+            if (playingChunks.length === 0) return;
+            startPlayTimer();
+            updatePlaybackButtons();
+        });
+
+        backButton.addEventListener('click', () => {
+            if (playingChunks.length === 0) return;
+            playIndex = (playIndex - 1 + playingChunks.length) % playingChunks.length;
+            renderPlayFrame();
+        });
+
+        pauseButton.addEventListener('click', () => {
+            if (playingChunks.length === 0) return;
+            pausePlayback();
+            updatePlaybackButtons();
+        });
+
+        speedSelect.addEventListener('change', () => {
+            playIntervalMs = Number(speedSelect.value);
+            // Apply the new speed immediately while playing
+            if (playTimer !== null) {
+                startPlayTimer();
+            }
+        });
+
+        playDialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            stopPlayback();
+        });
+        playDialog.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                stopPlayback();
+            }
+        });
+        playDialog.addEventListener('close', () => {
+            pausePlayback();
+            playingChunks = [];
+            updatePlaybackButtons();
+        });
 
         // add function to display qrcode which links to the qrscan.html page
         function displayQRForScanner() {
