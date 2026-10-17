@@ -56,10 +56,12 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v1.2.2</h1>
+    <h1>QR Data Sender v2.0.0 (10/17/2026)</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <button onclick="generateQRCodes()">Generate QR Codes</button>
     <button onclick="clearQRCodes()">Clear</button>
+    <button onclick="document.getElementById('fileInput').click()">Open CSV/TSV File</button>
+    <input type="file" id="fileInput" accept=".csv,.tsv,text/csv,text/tab-separated-values" style="display: none;">
 
     <div id="qrContainer"></div>
     <div id="characterCount"></div>
@@ -162,6 +164,23 @@
             document.getElementById('characterCount').textContent = "";
             displayQRForScanner();
         }
+
+        // Load the contents of a CSV/TSV file from the computer into the input area
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                // Normalize line endings so line-based QR chunking behaves consistently
+                document.getElementById('inputArea').value = e.target.result.replace(/\r\n?/g, '\n');
+            };
+            reader.onerror = function () {
+                console.error('Error reading file:', reader.error);
+            };
+            reader.readAsText(file);
+            event.target.value = "";  // Allow selecting the same file again
+        });
 
         // Display QR code for the scanner
         displayQRForScanner();

@@ -38,7 +38,7 @@
             margin-top: 10px;
         }
         
-        #copyButton, #clearButton, #saveButton {
+        #copyButton, #clearButton, #saveButton, #cameraButton {
             display: block;
             margin: 10px auto;
             padding: 10px 20px;
@@ -49,8 +49,15 @@
             font-size: 16px;
         }
         
-        #copyButton:hover, #clearButton:hover, #saveButton:hover {
+        #copyButton:hover, #clearButton:hover, #saveButton:hover, #cameraButton:hover {
             background-color: #45a049;
+        }
+
+        #cameraError {
+            color: #b00020;
+            font-size: 14px;
+            margin: 10px auto;
+            max-width: 400px;
         }
 
         .plotButton {
@@ -69,11 +76,13 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v1.2.2</h1>
+    <h1>Data Scanner v2.0.0 (10/17/2026)</h1>
     <div class="main">
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
-        <div id="qrmessage"></div>
+        <div id="qrmessage" aria-live="polite"></div>
+        <div id="cameraError"></div>
+        <button id="cameraButton">Stop Camera</button>
         <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
         <button id="copyButton">Copy to Clipboard</button> 
         <button id="clearButton">Clear</button> 
@@ -87,7 +96,7 @@
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const textarea = document.getElementById('textarea');
         const messageElement = document.getElementById('qrmessage');
         const clearButton = document.getElementById('clearButton');
@@ -97,16 +106,65 @@
         const plotButton = document.getElementById('plotButton');
         const plotButton2 = document.getElementById('plotButton2');
         const barPlotButton = document.getElementById('barPlotButton');
+        const cameraButton = document.getElementById('cameraButton');
+        const cameraError = document.getElementById('cameraError');
 
         var qrCodeNumber = 0;
+        const scannedNumbers = new Set();
+
+        const SCAN_INTERVAL_MS = 120;  // Minimum time between jsQR decodes
+        const BOX_DISPLAY_MS = 1000;   // How long a detected box stays drawn
+        let scanning = false;
+        let cameraStream = null;
+        let animationFrameId = null;
+        let lastScanTime = 0;
+        let lastDetection = null;
+        let audioContext = null;
 
         // Access the user's camera
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(stream => {
-            video.srcObject = stream;
-            video.play();
-        }).catch(err => {
-            console.error("Error accessing camera: ", err);
-        });
+        async function startCamera() {
+            cameraError.textContent = '';
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera access is not supported in this browser');
+                }
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = cameraStream;
+                await video.play();
+                cameraButton.textContent = 'Stop Camera';
+                startScanning();
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                cameraStream = null;
+                cameraError.textContent = 'Unable to access the camera (' + (err.message || err.name) +
+                    '). Allow camera permission and try again; camera access requires HTTPS or localhost.';
+                cameraButton.textContent = 'Start Camera';
+            }
+        }
+
+        function stopCamera() {
+            stopScanning();
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            video.srcObject = null;
+            cameraButton.textContent = 'Start Camera';
+        }
+
+        function startScanning() {
+            if (scanning) return;
+            scanning = true;
+            animationFrameId = requestAnimationFrame(scanQRCode);
+        }
+
+        function stopScanning() {
+            scanning = false;
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
 
         function drawBox(code, color) {
             ctx.strokeStyle = color;
@@ -120,51 +178,85 @@
             ctx.stroke();
         }
 
-        function scanQRCode() {
+        function scanQRCode(timestamp) {
+            if (!scanning) return;
+
+            const now = typeof timestamp === 'number' ? timestamp : performance.now();
+
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
 
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, canvas.width, canvas.height);
 
-                if (code) {
-                    const existingText = textarea.value;
-                    let scanedData = code.data;
-                    let color = 'green';
+                // Decoding is expensive, so only run jsQR a few times per second
+                if (now - lastScanTime >= SCAN_INTERVAL_MS) {
+                    lastScanTime = now;
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, canvas.width, canvas.height);
 
-                    // we need to extract the QR code number, first 3 characters, from the scanned data
-                    let scanNumber = Number(scanedData.substring(0, 3));
-                    scanedData = scanedData.substring(3);
-
-                    if (!existingText.includes(scanedData)) {
-                        if(scanNumber == qrCodeNumber) {
-                            textarea.value += scanedData + '\n';                    
-                            qrCodeNumber++;
-                            messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
-                            playBeep();
-                        } else {
-                            messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
-                            color = 'red';
-                        }
-                    } else {
-                        color = 'yellow';
-                        if(scanedData && scanedData.length > 0) {
-                            messageElement.textContent = `Waiting for QR Code# ${qrCodeNumber + 1}`;
-                        }
+                    if (code) {
+                        lastDetection = { code: code, color: handleScan(code), time: now };
                     }
+                }
 
-                    //console.log("Scanned QR Code Data: ", scanedData);
-                    drawBox(code, color);
+                if (lastDetection && now - lastDetection.time < BOX_DISPLAY_MS) {
+                    drawBox(lastDetection.code, lastDetection.color);
                 }
             }
 
-            requestAnimationFrame(scanQRCode);
+            animationFrameId = requestAnimationFrame(scanQRCode);
+        }
+
+        // Process one decoded QR code and return the overlay color to draw
+        function handleScan(code) {
+            const scanned = code.data;
+
+            // We need to extract the QR code number, the first 3 characters, from the scanned data
+            const match = /^(\d{3})/.exec(scanned);
+            if (!match) {
+                messageElement.textContent = 'Not a QRBeam data code (missing sequence number).';
+                return 'red';
+            }
+
+            const scanNumber = Number(match[1]);
+            const scannedData = scanned.substring(3);
+
+            if (scannedNumbers.has(scanNumber)) {
+                messageElement.textContent = `QR Code# ${scanNumber + 1} already scanned. Waiting for QR Code# ${qrCodeNumber + 1}`;
+                return 'yellow';
+            }
+
+            if (scanNumber !== qrCodeNumber) {
+                messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
+                return 'red';
+            }
+
+            if (scannedData.length === 0) {
+                messageElement.textContent = `QR Code# ${scanNumber + 1} contains no data. Waiting for QR Code# ${qrCodeNumber + 1}`;
+                return 'yellow';
+            }
+
+            textarea.value += scannedData + '\n';
+            scannedNumbers.add(scanNumber);
+            qrCodeNumber++;
+            messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
+            playBeep();
+            return 'green';
         }
 
         function playBeep() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+
+            // Reuse one context; browsers limit how many can be created
+            if (!audioContext) {
+                audioContext = new AudioCtx();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
             const oscillator = audioContext.createOscillator();
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
@@ -217,7 +309,7 @@
                 };
 
                 plotTitle = 'Bar Plot';
-            } if(type == 'xyy') {
+            } else if(type == 'xyy') {
                 trace = {
                     x: xValues,
                     y: yValues,
@@ -264,7 +356,15 @@
             Plotly.newPlot('plot', data, layout);
         }    
 
-        video.addEventListener('play', scanQRCode);
+        video.addEventListener('play', startScanning);
+
+        cameraButton.addEventListener('click', () => {
+            if (cameraStream) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        });
 
         copyButton.addEventListener('click', () => {
             textarea.select();
@@ -276,6 +376,7 @@
             textarea.value = '';
             messageElement.textContent = '';
             qrCodeNumber = 0;
+            scannedNumbers.clear();
             plotArea.innerHTML = '';
         });
 
@@ -314,6 +415,9 @@
                 drawPlot(data, 'bar');
             }
         });
+
+        // Start the camera and scanning on load
+        startCamera();
     </script>
 </body>
 </html>
