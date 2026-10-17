@@ -112,13 +112,9 @@
         var qrCodeNumber = 0;
         const scannedNumbers = new Set();
 
-        const SCAN_INTERVAL_MS = 120;  // Minimum time between jsQR decodes
-        const BOX_DISPLAY_MS = 1000;   // How long a detected box stays drawn
         let scanning = false;
         let cameraStream = null;
         let animationFrameId = null;
-        let lastScanTime = 0;
-        let lastDetection = null;
         let audioContext = null;
 
         // Access the user's camera
@@ -178,10 +174,8 @@
             ctx.stroke();
         }
 
-        function scanQRCode(timestamp) {
+        function scanQRCode() {
             if (!scanning) return;
-
-            const now = typeof timestamp === 'number' ? timestamp : performance.now();
 
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvas.width = video.videoWidth;
@@ -189,19 +183,11 @@
 
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // Decoding is expensive, so only run jsQR a few times per second
-                if (now - lastScanTime >= SCAN_INTERVAL_MS) {
-                    lastScanTime = now;
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const code = jsQR(imageData.data, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
 
-                    if (code) {
-                        lastDetection = { code: code, color: handleScan(code), time: now };
-                    }
-                }
-
-                if (lastDetection && now - lastDetection.time < BOX_DISPLAY_MS) {
-                    drawBox(lastDetection.code, lastDetection.color);
+                if (code) {
+                    drawBox(code, handleScan(code));
                 }
             }
 
