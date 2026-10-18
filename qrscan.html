@@ -87,7 +87,7 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v2.3.0 (10/18/2026)</h1>
+    <h1>Data Scanner v2.3.1 (10/18/2026)</h1>
     <div class="main">
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
@@ -211,8 +211,9 @@
         function handleScan(code) {
             const scanned = code.data;
 
-            // New codes carry "index/total" (e.g. 000/003); old codes only carry the index
-            const totalMatch = /^(\d{3})\/(\d+)/.exec(scanned);
+            // New codes carry "index/total" (e.g. 000/003); old codes only carry the index.
+            // The total is exactly 3 digits so data beginning with digits is not swallowed.
+            const totalMatch = /^(\d{3})\/(\d{3})/.exec(scanned);
             const indexMatch = totalMatch || /^(\d{3})/.exec(scanned);
             if (!indexMatch) {
                 messageElement.textContent = 'Not a QRBeam data code (missing sequence number).';

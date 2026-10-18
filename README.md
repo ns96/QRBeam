@@ -6,7 +6,7 @@ This web application leverages the camera capabilities of smartphones to decode 
 
 ## Features
 
-Current version: **v2.3.0 (10/18/2026)**
+Current version: **v2.3.1 (10/18/2026)**
 
 ### Data Sender ([index.html](https://ns96.github.io/QRBeam/index.html))
 
