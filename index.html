@@ -50,7 +50,7 @@
         .buttonRow button {
             flex: 1 1 0;
             width: auto;
-            min-width: 140px;
+            min-width: 120px;
             margin-bottom: 0;
         }
         .qrLabel {
@@ -71,7 +71,7 @@
             text-align: center;
             background-color: #fff;
         }
-        #playDialog::backdrop {
+        #playDialog::backdrop, #reduceDialog::backdrop {
             background: rgba(0, 0, 0, 0.6);
         }
         #playLabel {
@@ -84,16 +84,41 @@
             height: min(70vh, 80vw);
             background-color: #fff;
         }
-        #playDialog button {
+        #reduceDialog {
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            background-color: #fff;
+            min-width: 320px;
+            text-align: center;
+        }
+        #reduceDialog label {
+            display: block;
+            font-weight: bold;
+            margin: 10px 0 4px;
+            text-align: left;
+        }
+        #reduceDialog input {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        #reduceMessage {
+            min-height: 18px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        #playDialog button, #reduceDialog button {
             display: inline-block;
             width: auto;
             margin: 6px;
         }
-        #playDialog button:disabled {
+        #playDialog button:disabled, #reduceDialog button:disabled {
             opacity: 0.5;
             cursor: default;
         }
-        .playControls {
+        .dialogControls {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
@@ -117,13 +142,14 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v2.1.0 (10/17/2026)</h1>
+    <h1>QR Data Sender v2.2.0 (10/18/2026)</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <div class="buttonRow">
         <button onclick="generateQRCodes()">Generate QR Codes</button>
         <button onclick="clearQRCodes()">Clear</button>
         <button onclick="document.getElementById('fileInput').click()">Open CSV/TSV File</button>
         <button onclick="playQRCodes()">Play QR</button>
+        <button onclick="openReduceDialog()">Data Reduce</button>
     </div>
     <input type="file" id="fileInput" accept=".csv,.tsv,text/csv,text/tab-separated-values" style="display: none;">
 
@@ -133,7 +159,7 @@
     <dialog id="playDialog">
         <div id="playLabel">QR Code 1 of 1</div>
         <canvas id="playCanvas"></canvas>
-        <div class="playControls">
+        <div class="dialogControls">
             <label class="speedControl" for="speedSelect">Speed
                 <select id="speedSelect">
                     <option value="100">0.1 s</option>
@@ -146,6 +172,20 @@
             <button id="startButton">Start</button>
             <button id="pauseButton" disabled>Pause</button>
             <button id="closePlayButton">Close</button>
+        </div>
+    </dialog>
+
+    <dialog id="reduceDialog">
+        <div id="reduceTitle">Data Reduce</div>
+        <label for="reduceRows">Number of rows to average:</label>
+        <input type="number" id="reduceRows" min="1" value="2">
+        <label for="reduceDecimals">Decimal places to round to:</label>
+        <input type="number" id="reduceDecimals" min="0" value="2">
+        <div id="reduceMessage"></div>
+        <div class="dialogControls">
+            <button id="applyReduceButton">Reduce Data</button>
+            <button id="revertReduceButton" disabled>Revert</button>
+            <button id="closeReduceButton">Close</button>
         </div>
     </dialog>
 
@@ -331,6 +371,105 @@
             updatePlaybackButtons();
         });
 
+        // Data reduction: average groups of rows and round to the requested decimals
+        const inputArea = document.getElementById('inputArea');
+        const reduceDialog = document.getElementById('reduceDialog');
+        const reduceRows = document.getElementById('reduceRows');
+        const reduceDecimals = document.getElementById('reduceDecimals');
+        const reduceMessage = document.getElementById('reduceMessage');
+        const revertReduceButton = document.getElementById('revertReduceButton');
+        let reduceOriginalData = null;
+
+        function updateRevertButton() {
+            revertReduceButton.disabled = reduceOriginalData === null;
+        }
+
+        function openReduceDialog() {
+            if (!inputArea.value) {
+                document.getElementById('characterCount').textContent = 'Nothing to reduce - enter or open data first.';
+                return;
+            }
+            reduceMessage.textContent = '';
+            updateRevertButton();
+            if (!reduceDialog.open) {
+                reduceDialog.showModal();
+            }
+        }
+
+        function applyDataReduction() {
+            const rowCount = parseInt(reduceRows.value, 10);
+            const decimalPlaces = parseInt(reduceDecimals.value, 10);
+
+            if (isNaN(rowCount) || rowCount < 1) {
+                reduceMessage.textContent = 'Enter a valid number of rows to average.';
+                return;
+            }
+            if (isNaN(decimalPlaces) || decimalPlaces < 0) {
+                reduceMessage.textContent = 'Enter a valid number of decimal places.';
+                return;
+            }
+
+            const dataInput = inputArea.value;
+            const delimiter = dataInput.includes('\t') ? '\t' : ',';
+            const lines = dataInput.trim().split('\n').filter(line => line.trim() !== '');
+            const headers = lines[0];
+            const rows = lines.slice(1).map(row => row.split(delimiter).map(Number));
+
+            if (rows.length === 0) {
+                reduceMessage.textContent = 'No data rows to reduce (only a header row was found).';
+                return;
+            }
+            if (rows.some(row => row.some(value => isNaN(value)))) {
+                reduceMessage.textContent = 'Data rows must contain numbers only.';
+                return;
+            }
+
+            const averagedRows = [];
+            for (let i = 0; i < rows.length; i += rowCount) {
+                const chunk = rows.slice(i, i + rowCount);
+                const averagedRow = chunk[0].map((_, colIndex) => {
+                    const sum = chunk.reduce((acc, row) => acc + row[colIndex], 0);
+                    return (sum / chunk.length).toFixed(decimalPlaces);
+                });
+                averagedRows.push(averagedRow);
+            }
+
+            // Keep the pre-reduction data so it can be restored
+            if (reduceOriginalData === null) {
+                reduceOriginalData = dataInput;
+            }
+
+            inputArea.value = [headers, ...averagedRows.map(row => row.join(delimiter))].join('\n');
+            updateRevertButton();
+            reduceMessage.textContent = `Reduced ${rows.length} data rows to ${averagedRows.length} rows with ${decimalPlaces} decimal places.`;
+        }
+
+        function revertDataReduction() {
+            if (reduceOriginalData === null) return;
+            inputArea.value = reduceOriginalData;
+            reduceOriginalData = null;
+            updateRevertButton();
+            reduceMessage.textContent = 'Data reverted to the original.';
+        }
+
+        document.getElementById('applyReduceButton').addEventListener('click', applyDataReduction);
+        revertReduceButton.addEventListener('click', revertDataReduction);
+        document.getElementById('closeReduceButton').addEventListener('click', () => reduceDialog.close());
+        reduceDialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            reduceDialog.close();
+        });
+        reduceDialog.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                reduceDialog.close();
+            }
+        });
+        // A manual edit invalidates the snapshot the Revert button restores
+        inputArea.addEventListener('input', () => {
+            reduceOriginalData = null;
+            updateRevertButton();
+        });
+
         // add function to display qrcode which links to the qrscan.html page
         function displayQRForScanner() {
             const qrContainer = document.getElementById('qrContainer');
@@ -367,6 +506,8 @@
             document.getElementById('inputArea').value = "";
             document.getElementById('qrContainer').innerHTML = "";
             document.getElementById('characterCount').textContent = "";
+            reduceOriginalData = null;
+            updateRevertButton();
             displayQRForScanner();
         }
 
@@ -379,6 +520,9 @@
             reader.onload = function (e) {
                 // Normalize line endings so line-based QR chunking behaves consistently
                 document.getElementById('inputArea').value = e.target.result.replace(/\r\n?/g, '\n');
+                // New data: previous reduction snapshot no longer applies
+                reduceOriginalData = null;
+                updateRevertButton();
             };
             reader.onerror = function () {
                 console.error('Error reading file:', reader.error);
