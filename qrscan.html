@@ -60,6 +60,17 @@
             max-width: 400px;
         }
 
+        #qrmessage {
+            min-height: 20px;
+            font-size: 16px;
+        }
+
+        #qrmessage.complete {
+            color: #1b7f3b;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
         .plotButton {
             display: block;
             margin: 10px auto;
@@ -76,7 +87,7 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v2.2.1 (10/18/2026)</h1>
+    <h1>Data Scanner v2.3.0 (10/18/2026)</h1>
     <div class="main">
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
@@ -111,6 +122,8 @@
 
         var qrCodeNumber = 0;
         const scannedNumbers = new Set();
+        let expectedTotal = null;
+        let scanComplete = false;
 
         let scanning = false;
         let cameraStream = null;
@@ -198,42 +211,83 @@
         function handleScan(code) {
             const scanned = code.data;
 
-            // We need to extract the QR code number, the first 3 characters, from the scanned data
-            const match = /^(\d{3})/.exec(scanned);
-            if (!match) {
+            // New codes carry "index/total" (e.g. 000/003); old codes only carry the index
+            const totalMatch = /^(\d{3})\/(\d+)/.exec(scanned);
+            const indexMatch = totalMatch || /^(\d{3})/.exec(scanned);
+            if (!indexMatch) {
                 messageElement.textContent = 'Not a QRBeam data code (missing sequence number).';
                 return 'red';
             }
 
-            const scanNumber = Number(match[1]);
-            const scannedData = scanned.substring(3);
+            if (scanComplete) {
+                return 'green';
+            }
+
+            const scanNumber = Number(indexMatch[1]);
+            const totalFromCode = totalMatch ? Number(totalMatch[2]) : null;
+            const scannedData = scanned.substring(indexMatch[0].length);
+
+            // All new-format codes must agree on how many codes the set contains
+            if (totalFromCode !== null) {
+                if (expectedTotal === null) {
+                    expectedTotal = totalFromCode;
+                } else if (expectedTotal !== totalFromCode) {
+                    messageElement.textContent = `Different QR code set (${totalFromCode} codes). Press Clear to start over.`;
+                    return 'red';
+                }
+            }
+
+            const totalSuffix = expectedTotal !== null ? ` of ${expectedTotal}` : '';
 
             if (scannedNumbers.has(scanNumber)) {
-                messageElement.textContent = `QR Code# ${scanNumber + 1} already scanned. Waiting for QR Code# ${qrCodeNumber + 1}`;
+                // Old codes have no total, so a loop back to the first code means the set is complete
+                if (expectedTotal === null && scanNumber === 0 && qrCodeNumber > 0) {
+                    return completeScan(qrCodeNumber);
+                }
+                messageElement.textContent = `QR Code# ${scanNumber + 1} already scanned. Waiting for QR Code# ${qrCodeNumber + 1}${totalSuffix}`;
                 return 'yellow';
             }
 
             if (scanNumber !== qrCodeNumber) {
-                messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}`;
+                messageElement.textContent = `Out of sequence QR Code# ${scanNumber + 1}. Expected QR Code# ${qrCodeNumber + 1}${totalSuffix}`;
                 return 'red';
             }
 
             if (scannedData.length === 0) {
-                messageElement.textContent = `QR Code# ${scanNumber + 1} contains no data. Waiting for QR Code# ${qrCodeNumber + 1}`;
+                messageElement.textContent = `QR Code# ${scanNumber + 1} contains no data. Waiting for QR Code# ${qrCodeNumber + 1}${totalSuffix}`;
                 return 'yellow';
             }
 
             textarea.value += scannedData + '\n';
             scannedNumbers.add(scanNumber);
             qrCodeNumber++;
-            messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}`;
+
+            if (expectedTotal !== null && scannedNumbers.size >= expectedTotal) {
+                return completeScan(expectedTotal);
+            }
+
+            messageElement.textContent = `Scanned QR Code# ${qrCodeNumber}${totalSuffix}`;
             playBeep();
             return 'green';
         }
 
-        function playBeep() {
+        function completeScan(total) {
+            scanComplete = true;
+            messageElement.textContent = `All ${total} QR codes scanned`;
+            messageElement.classList.add('complete');
+            playCompleteBeep();
+            return 'green';
+        }
+
+        function resetScanState() {
+            scanComplete = false;
+            expectedTotal = null;
+            messageElement.classList.remove('complete');
+        }
+
+        function getAudioContext() {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
+            if (!AudioCtx) return null;
 
             // Reuse one context; browsers limit how many can be created
             if (!audioContext) {
@@ -242,13 +296,35 @@
             if (audioContext.state === 'suspended') {
                 audioContext.resume();
             }
+            return audioContext;
+        }
 
-            const oscillator = audioContext.createOscillator();
+        function playBeep() {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            const oscillator = ctx.createOscillator();
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
-            oscillator.connect(audioContext.destination);
+            oscillator.frequency.setValueAtTime(440, ctx.currentTime); // A4 note
+            oscillator.connect(ctx.destination);
             oscillator.start();
-            oscillator.stop(audioContext.currentTime + 0.1); // Beep for 0.1 seconds
+            oscillator.stop(ctx.currentTime + 0.1); // Beep for 0.1 seconds
+        }
+
+        function playCompleteBeep() {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            // Two rising tones to signal that every code has been scanned
+            [660, 880].forEach((frequency, index) => {
+                const start = ctx.currentTime + index * 0.12;
+                const oscillator = ctx.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency, start);
+                oscillator.connect(ctx.destination);
+                oscillator.start(start);
+                oscillator.stop(start + 0.1);
+            });
         }
 
         function drawPlot(dataInput, type='xy') {
@@ -363,6 +439,7 @@
             messageElement.textContent = '';
             qrCodeNumber = 0;
             scannedNumbers.clear();
+            resetScanState();
             plotArea.innerHTML = '';
         });
 

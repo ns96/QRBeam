@@ -6,11 +6,11 @@ This web application leverages the camera capabilities of smartphones to decode 
 
 ## Features
 
-Current version: **v2.2.1 (10/18/2026)**
+Current version: **v2.3.0 (10/18/2026)**
 
 ### Data Sender ([index.html](https://ns96.github.io/QRBeam/index.html))
 
-* Paste or type data into the text area, then press **Generate QR Codes** to split it into a series of QR Codes, each carrying a portion of the data plus an index for reassembly.
+* Paste or type data into the text area, then press **Generate QR Codes** to split it into a series of QR Codes, each carrying a portion of the data plus an index for reassembly. Each code is prefixed with `index/total` (for example `000/003`) so the scanner knows when the whole set has been read.
 * **Open CSV/TSV File** loads a `.csv` or `.tsv` file from the computer straight into the text area, ready for encoding.
 * **Play QR** opens a dialog that flashes the generated QR Codes one at a time, so the phone can be held in one fixed position instead of panning across a page of codes.
   * The dialog opens paused on the first QR Code so the phone can be aligned before playback begins.
@@ -22,6 +22,7 @@ Current version: **v2.2.1 (10/18/2026)**
 ### Data Scanner ([qrscan.html](https://ns96.github.io/QRBeam/qrscan.html))
 
 * Scans QR Codes with the phone camera and reassembles the original data in the text area.
+* Tracks progress as codes arrive (for example `QR Code 3 of 12`). When every code in the set has been scanned it announces **All N QR codes scanned**, plays a two-tone completion beep, and ignores further reads until **Clear** is pressed. Codes generated before v2.3.0 carry no total count; they still scan, and completion is detected when the sender loops back to the first code.
 * Validates the sequence number of every code, highlighting each read in the camera overlay: green for accepted, yellow for a code that was already scanned, and red for an out-of-sequence or non-QRBeam code.
 * **Stop Camera** / **Start Camera** releases and re-acquires the camera without reloading the page, and camera permission problems are reported on the page instead of only in the console.
 * Audio confirmation for each accepted code; the scanned data can be copied to the clipboard, saved to a file, or plotted (XY, XYY, or bar chart).

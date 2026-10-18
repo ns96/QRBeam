@@ -164,7 +164,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v2.2.1 (10/18/2026)</h1>
+    <h1>QR Data Sender v2.3.0 (10/18/2026)</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <div class="buttonRow">
         <button onclick="generateQRCodes()">Generate QR Codes</button>
@@ -238,8 +238,9 @@
                 chunks.push(lines.slice(i, i + maxLines).join('\n'));
             }
 
-            // add the index to the qrcode to be able to reassemble the data in the correct order
-            return chunks.map((chunk, index) => pad(index, 3) + chunk);
+            // Prefix each chunk with index/total so the scanner knows when the set is complete
+            const total = chunks.length;
+            return chunks.map((chunk, index) => pad(index, 3) + '/' + pad(total, 3) + chunk);
         }
 
         function generateQRCodes() {
