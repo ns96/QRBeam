@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Data Sender</title>
     <script src="js/qrcode.min.js"></script>
+    <script src="js/plotly-basic.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -71,7 +72,7 @@
             text-align: center;
             background-color: #fff;
         }
-        #playDialog::backdrop, #reduceDialog::backdrop {
+        #playDialog::backdrop, #reduceDialog::backdrop, #plotDialog::backdrop {
             background: rgba(0, 0, 0, 0.6);
         }
         #playLabel {
@@ -109,12 +110,33 @@
             margin-top: 10px;
             font-size: 14px;
         }
-        #playDialog button, #reduceDialog button {
+        #plotDialog {
+            border: none;
+            border-radius: 8px;
+            padding: 16px;
+            background-color: #fff;
+            text-align: center;
+        }
+        #plotTitle {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        #plotArea {
+            width: min(80vw, 1100px);
+            height: min(65vh, 650px);
+        }
+        #plotMessage {
+            min-height: 18px;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        #playDialog button, #reduceDialog button, #plotDialog button {
             display: inline-block;
             width: auto;
             margin: 6px;
         }
-        #playDialog button:disabled, #reduceDialog button:disabled {
+        #playDialog button:disabled, #reduceDialog button:disabled, #plotDialog button:disabled {
             opacity: 0.5;
             cursor: default;
         }
@@ -142,7 +164,7 @@
 </head>
 <body>
 
-    <h1>QR Data Sender v2.2.0 (10/18/2026)</h1>
+    <h1>QR Data Sender v2.2.1 (10/18/2026)</h1>
     <textarea id="inputArea" placeholder="Enter data to generate QR codes"></textarea>
     <div class="buttonRow">
         <button onclick="generateQRCodes()">Generate QR Codes</button>
@@ -150,6 +172,7 @@
         <button onclick="document.getElementById('fileInput').click()">Open CSV/TSV File</button>
         <button onclick="playQRCodes()">Play QR</button>
         <button onclick="openReduceDialog()">Data Reduce</button>
+        <button onclick="openPlotDialog()">Plot Data</button>
     </div>
     <input type="file" id="fileInput" accept=".csv,.tsv,text/csv,text/tab-separated-values" style="display: none;">
 
@@ -186,6 +209,15 @@
             <button id="applyReduceButton">Reduce Data</button>
             <button id="revertReduceButton" disabled>Revert</button>
             <button id="closeReduceButton">Close</button>
+        </div>
+    </dialog>
+
+    <dialog id="plotDialog">
+        <div id="plotTitle">Data Plot</div>
+        <div id="plotArea"></div>
+        <div id="plotMessage"></div>
+        <div class="dialogControls">
+            <button id="closePlotButton">Close</button>
         </div>
     </dialog>
 
@@ -468,6 +500,165 @@
         inputArea.addEventListener('input', () => {
             reduceOriginalData = null;
             updateRevertButton();
+        });
+
+        // Plot the current data, detecting the chart type from the columns
+        const plotDialog = document.getElementById('plotDialog');
+        const plotArea = document.getElementById('plotArea');
+        const plotMessage = document.getElementById('plotMessage');
+
+        function buildPlot(data) {
+            const delimiter = data.includes('\t') ? '\t' : ',';
+            const lines = data.trim().split('\n').map(line => line.trim()).filter(line => line !== '');
+            if (lines.length === 0) {
+                return { error: 'No data to plot.' };
+            }
+
+            const cells = lines.map(line => line.split(delimiter).map(cell => cell.trim()));
+            let headers = null;
+            let dataCells = cells;
+
+            const firstRowNumeric = cells[0].every(cell => cell !== '' && !isNaN(Number(cell)));
+            if (!firstRowNumeric && cells.length > 1) {
+                headers = cells[0];
+                dataCells = cells.slice(1);
+            }
+            if (dataCells.length === 0) {
+                return { error: 'No data rows to plot (only a header row was found).' };
+            }
+
+            const columnCount = Math.min(...dataCells.map(row => row.length));
+            if (columnCount === 0) {
+                return { error: 'No data columns to plot.' };
+            }
+
+            const numeric = [];
+            for (let c = 0; c < columnCount; c++) {
+                numeric[c] = dataCells.every(row => row[c] !== '' && !isNaN(Number(row[c])));
+            }
+
+            const labelFor = (index, prefix) => (headers && headers[index]) ? headers[index] : prefix;
+
+            // Text in the first column with numbers after it -> bar chart
+            if (!numeric[0] && numeric.slice(1).some(Boolean)) {
+                const categories = dataCells.map(row => row[0]);
+                const traces = [];
+                for (let c = 1; c < columnCount; c++) {
+                    if (!numeric[c]) continue;
+                    traces.push({
+                        type: 'bar',
+                        name: labelFor(c, `Series ${traces.length + 1}`),
+                        x: categories,
+                        y: dataCells.map(row => Number(row[c]))
+                    });
+                }
+                return {
+                    traces: traces,
+                    layout: {
+                        xaxis: { title: labelFor(0, 'Categories') },
+                        yaxis: { title: traces.length === 1 ? traces[0].name : 'Value' },
+                        margin: { t: 30, r: 20, b: 60, l: 60 }
+                    },
+                    description: `Auto-detected bar chart: ${categories.length} categories, ${traces.length} series.`
+                };
+            }
+
+            if (!numeric[0]) {
+                return { error: 'No numeric columns found to plot.' };
+            }
+
+            const numericColumns = [];
+            for (let c = 0; c < columnCount; c++) {
+                if (numeric[c]) numericColumns.push(c);
+            }
+
+            const traces = [];
+            let xTitle;
+
+            if (numericColumns.length === 1) {
+                // A single numeric column is plotted against the row number
+                const c = numericColumns[0];
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: labelFor(c, 'Y'),
+                    x: dataCells.map((_, i) => i + 1),
+                    y: dataCells.map(row => Number(row[c]))
+                });
+                xTitle = 'Row';
+            } else {
+                const xColumn = numericColumns[0];
+                xTitle = labelFor(xColumn, 'X');
+                for (let i = 1; i < numericColumns.length; i++) {
+                    const c = numericColumns[i];
+                    traces.push({
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: labelFor(c, `Y${i}`),
+                        x: dataCells.map(row => Number(row[xColumn])),
+                        y: dataCells.map(row => Number(row[c]))
+                    });
+                }
+            }
+
+            return {
+                traces: traces,
+                layout: {
+                    xaxis: { title: xTitle },
+                    yaxis: { title: traces.length === 1 ? traces[0].name : 'Value' },
+                    margin: { t: 30, r: 20, b: 60, l: 60 }
+                },
+                description: `Auto-detected ${traces[0].type === 'bar' ? 'bar' : 'scatter/line'} plot: ${dataCells.length} points, ${traces.length} series.`
+            };
+        }
+
+        function openPlotDialog() {
+            const characterCount = document.getElementById('characterCount');
+            const data = inputArea.value;
+
+            if (!data.trim()) {
+                characterCount.textContent = 'Nothing to plot - enter or open data first.';
+                return;
+            }
+            if (typeof Plotly === 'undefined') {
+                characterCount.textContent = 'Plot library not loaded (expected js/plotly-basic.min.js).';
+                return;
+            }
+
+            const result = buildPlot(data);
+            if (result.error) {
+                characterCount.textContent = result.error;
+                return;
+            }
+
+            if (!plotDialog.open) {
+                plotDialog.showModal();
+            }
+            requestAnimationFrame(() => {
+                Plotly.newPlot(plotArea, result.traces, result.layout, { responsive: true, displaylogo: false });
+                plotMessage.textContent = result.description;
+            });
+        }
+
+        function closePlotDialog() {
+            if (plotDialog.open) {
+                plotDialog.close();
+            }
+        }
+
+        document.getElementById('closePlotButton').addEventListener('click', closePlotDialog);
+        plotDialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            closePlotDialog();
+        });
+        plotDialog.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closePlotDialog();
+            }
+        });
+        plotDialog.addEventListener('close', () => {
+            Plotly.purge(plotArea);
+            plotMessage.textContent = '';
         });
 
         // add function to display qrcode which links to the qrscan.html page

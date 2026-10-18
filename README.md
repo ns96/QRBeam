@@ -6,7 +6,7 @@ This web application leverages the camera capabilities of smartphones to decode 
 
 ## Features
 
-Current version: **v2.2.0 (10/18/2026)**
+Current version: **v2.2.1 (10/18/2026)**
 
 ### Data Sender ([index.html](https://ns96.github.io/QRBeam/index.html))
 
@@ -17,6 +17,7 @@ Current version: **v2.2.0 (10/18/2026)**
   * **Start**, **Pause**, **Back**, and **Close** control the sequence; playback loops after the last code.
   * Playback speed can be set to **0.1 s**, **0.25 s**, **0.5 s**, or **1 s** per QR Code, and changed while playing. Slower speeds are more reliable for older phone cameras.
 * **Data Reduce** opens a dialog that shrinks numeric CSV/TSV data before encoding, using the same averaging and decimal rounding as the standalone reducer: choose how many rows to average together (use `1` to only round) and how many decimal places to keep. A **Revert** button restores the data to its original state, and the snapshot is dropped whenever the data is edited, cleared, or reloaded.
+* **Plot Data** opens a dialog that charts the current data with the bundled Plotly library, choosing the chart automatically: two numeric columns give an X-Y plot, three or more give a multi-series X-Y plot, a text first column with numbers after it gives a bar chart, and a single numeric column is plotted against the row number. Header rows are detected and reused as axis and series labels.
 
 ### Data Scanner ([qrscan.html](https://ns96.github.io/QRBeam/qrscan.html))
 
@@ -28,7 +29,7 @@ Current version: **v2.2.0 (10/18/2026)**
 ## Installation and Usage
 Download the [latest release](https://github.com/ns96/QRBeam/releases), then unzip QRBeam.zip on a computer with data to be transferred. Next, open the QRBeam folder, then double-click on the index.html file. This will open the page which allows for encoding data, as well as provide a QR code which links to the companion decoding web page to be opened on the smartphone.
 
-Once the page is open, type or paste the data into the text area (or use **Open CSV/TSV File** to load a file), optionally use **Data Reduce** to average rows or trim decimal places, press **Generate QR Codes**, and then either scan the codes from the screen or press **Play QR** to display them one at a time in a dialog while the phone stays in a fixed position. The decoding page must be served over HTTPS or localhost for the phone to grant camera access; the hosted copy at [qrscan.html](https://ns96.github.io/QRBeam/qrscan.html) already is.
+Once the page is open, type or paste the data into the text area (or use **Open CSV/TSV File** to load a file), optionally use **Data Reduce** to average rows or trim decimal places, and use **Plot Data** to preview the values as a chart. Then press **Generate QR Codes**, and either scan the codes from the screen or press **Play QR** to display them one at a time in a dialog while the phone stays in a fixed position. The decoding page must be served over HTTPS or localhost for the phone to grant camera access; the hosted copy at [qrscan.html](https://ns96.github.io/QRBeam/qrscan.html) already is.
 
 ## Known Issues
 On iPhones, the decoding web page may not work correctly with the camera not loading into page. The page does load correctly on an iPad though.
@@ -38,3 +39,6 @@ This app would not be possible without the use of the excellent JavaScript libra
 
 * [QRCode.js](https://github.com/davidshimjs/qrcodejs)
 * [jsQR](https://github.com/cozmo/jsQR)
+* [Plotly.js](https://github.com/plotly/plotly.js)
+
+All libraries are bundled in the `js/` folder (`qrcode.min.js`, `jsQR.js` v1.4.0, and `plotly-basic.min.js` v2.35.2), so none of the pages need internet access at runtime.
