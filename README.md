@@ -6,7 +6,7 @@ This web application leverages the camera capabilities of smartphones to decode 
 
 ## Features
 
-Current version: **v2.3.1 (10/18/2026)**
+Current version: **v2.4.0 (10/18/2026)**
 
 ### Data Sender ([index.html](https://ns96.github.io/QRBeam/index.html))
 
@@ -22,6 +22,8 @@ Current version: **v2.3.1 (10/18/2026)**
 ### Data Scanner ([qrscan.html](https://ns96.github.io/QRBeam/qrscan.html))
 
 * Scans QR Codes with the phone camera and reassembles the original data in the text area.
+* The scanner page is mobile-first: the camera preview fills the screen width, every button is full-width with a 48 px touch target, and the text area and charts scale to the device. A desktop two-column layout is used on wider screens.
+* Charts are rendered at the container width with horizontal legends and adapt on rotation or when the browser bars appear. **Expand Plot** opens the chart full-screen for a closer look, and Close (or Esc) returns to the page.
 * Tracks progress as codes arrive (for example `QR Code 3 of 12`). When every code in the set has been scanned it announces **All N QR codes scanned**, plays a two-tone completion beep, and ignores further reads until **Clear** is pressed. Codes generated before v2.3.0 carry no total count; they still scan, and completion is detected when the sender loops back to the first code.
 * Validates the sequence number of every code, highlighting each read in the camera overlay: green for accepted, yellow for a code that was already scanned, and red for an out-of-sequence or non-QRBeam code.
 * **Stop Camera** / **Start Camera** releases and re-acquires the camera without reloading the page, and camera permission problems are reported on the page instead of only in the console.

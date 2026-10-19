@@ -2,106 +2,221 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>QR Scanner</title>
     <script src="js/jsQR.js"></script>
     <script src="js/plotly-basic.min.js"></script>
     <style>
-        .main {
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+            background-color: #f4f4f9;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 4px 0 8px;
             text-align: center;
-            display: grid;
-            grid-template-columns: 1fr;
-            grid-template-rows: auto;
-            place-items: center;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .cameraSection {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .dataSection {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .cameraWrap {
+            position: relative;
+            width: 100%;
+            max-width: 520px;
+            min-height: 200px;
+            margin: 0 auto;
+            background-color: #000;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         #video {
-            border: 1px solid black;
+            display: block;
             width: 100%;
-            max-width: 400px;
-            margin: 10px auto;
-            z-index: -1;
-            grid-area: 1 / 1;
+            height: auto;
         }
 
         #canvas {
-            border: 1px solid black;
+            position: absolute;
+            inset: 0;
             width: 100%;
-            max-width: 400px;
-            margin: 10px auto;
-            grid-area: 1 / 1;
-        }
-
-        #textarea {
-            width: 100%;
-            height: 200px;
-            margin-top: 10px;
-        }
-        
-        #copyButton, #clearButton, #saveButton, #cameraButton {
+            height: 100%;
             display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        
-        #copyButton:hover, #clearButton:hover, #saveButton:hover, #cameraButton:hover {
-            background-color: #45a049;
-        }
-
-        #cameraError {
-            color: #b00020;
-            font-size: 14px;
-            margin: 10px auto;
-            max-width: 400px;
         }
 
         #qrmessage {
             min-height: 20px;
             font-size: 16px;
+            text-align: center;
         }
 
         #qrmessage.complete {
             color: #1b7f3b;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
         }
 
-        .plotButton {
-            display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
-            background-color: #ffd000;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
+        #cameraError {
+            color: #b00020;
+            font-size: 14px;
+            text-align: center;
         }
+
+        button {
+            display: block;
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .plotButton {
+            background-color: #ffd000;
+            color: #333;
+        }
+
         .plotButton:hover {
             background-color: #ffcc00;
+        }
+
+        #textarea {
+            width: 100%;
+            height: 28vh;
+            min-height: 140px;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            resize: vertical;
+        }
+
+        .plotWrap {
+            width: 100%;
+        }
+
+        #plot {
+            width: 100%;
+            min-width: 0;
+            height: min(45vh, 420px);
+        }
+
+        .plotWrap.expanded {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
+            background-color: #fff;
+        }
+
+        .plotWrap.expanded #plot {
+            flex: 1 1 auto;
+            height: auto !important;
+            min-height: 0;
+        }
+
+        @media (min-width: 700px) {
+            body {
+                padding: 16px;
+                max-width: 1100px;
+                margin: 0 auto;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .app {
+                display: grid;
+                grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.2fr);
+                align-items: start;
+                gap: 16px;
+            }
+
+            #textarea {
+                height: 220px;
+            }
+
+            #plot {
+                height: 360px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Data Scanner v2.3.1 (10/18/2026)</h1>
-    <div class="main">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="canvas"></canvas>
-        <div id="qrmessage" aria-live="polite"></div>
-        <div id="cameraError"></div>
-        <button id="cameraButton">Stop Camera</button>
-        <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
-        <button id="copyButton">Copy to Clipboard</button> 
-        <button id="clearButton">Clear</button> 
-        <button id="saveButton">Save to File</button>
-        <button id="plotButton" class="plotButton">XY Plot</button> 
-        <button id="plotButton2" class="plotButton">XYY Plot</button> 
-        <button id="barPlotButton" class="plotButton">Bar Plot</button> 
-        <div id="plot"></div>
+    <h1>Data Scanner v2.4.0 (10/18/2026)</h1>
+    <div class="app">
+        <section class="cameraSection">
+            <div class="cameraWrap">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            <div id="qrmessage" aria-live="polite"></div>
+            <div id="cameraError"></div>
+            <button id="cameraButton">Stop Camera</button>
+        </section>
+
+        <section class="dataSection">
+            <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
+            <button id="copyButton">Copy to Clipboard</button>
+            <button id="clearButton">Clear</button>
+            <button id="saveButton">Save to File</button>
+            <button id="plotButton" class="plotButton">XY Plot</button>
+            <button id="plotButton2" class="plotButton">XYY Plot</button>
+            <button id="barPlotButton" class="plotButton">Bar Plot</button>
+            <div class="plotWrap" id="plotWrap">
+                <div id="plot"></div>
+                <button id="expandPlotButton">Expand Plot</button>
+            </div>
+        </section>
     </div>
     
     <script>
@@ -411,13 +526,57 @@
             // Define the plot layout
             const layout = {
                 title: plotTitle,
-                xaxis: { title: 'X Axis' },
-                yaxis: { title: 'Y Axis' }
+                autosize: true,
+                font: { size: 12 },
+                margin: { l: 45, r: 15, t: 40, b: 45 },
+                legend: { orientation: 'h' },
+                xaxis: { title: 'X Axis', automargin: true },
+                yaxis: { title: 'Y Axis', automargin: true }
+            };
+            const config = {
+                responsive: true,
+                displayModeBar: false,
+                scrollZoom: false,
+                doubleClick: 'reset'
             };
 
             // Render the plot in the div with id="plot"
-            Plotly.newPlot('plot', data, layout);
-        }    
+            Plotly.newPlot('plot', data, layout, config).then(() => {
+                Plotly.Plots.resize('plot');
+            });
+        }
+
+        let plotResizeTimer = null;
+        function resizePlot() {
+            if (plotArea.data) {
+                Plotly.Plots.resize(plotArea);
+            }
+        }
+        function schedulePlotResize(delay) {
+            clearTimeout(plotResizeTimer);
+            plotResizeTimer = setTimeout(resizePlot, delay);
+        }
+
+        const plotWrap = document.getElementById('plotWrap');
+        const expandPlotButton = document.getElementById('expandPlotButton');
+
+        function togglePlotExpanded() {
+            const expanded = plotWrap.classList.toggle('expanded');
+            expandPlotButton.textContent = expanded ? 'Close Plot' : 'Expand Plot';
+            schedulePlotResize(100);
+        }
+
+        expandPlotButton.addEventListener('click', togglePlotExpanded);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && plotWrap.classList.contains('expanded')) {
+                togglePlotExpanded();
+            }
+        });
+        window.addEventListener('resize', () => schedulePlotResize(150));
+        window.addEventListener('orientationchange', () => schedulePlotResize(250));
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => schedulePlotResize(150));
+        }
 
         video.addEventListener('play', startScanning);
 
@@ -441,7 +600,7 @@
             qrCodeNumber = 0;
             scannedNumbers.clear();
             resetScanState();
-            plotArea.innerHTML = '';
+            Plotly.purge(plotArea);
         });
 
         saveButton.addEventListener('click', () => {
