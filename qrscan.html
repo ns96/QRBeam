@@ -136,6 +136,29 @@
             resize: vertical;
         }
 
+        .fileNameField {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .fileNameField label {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        #fileNameInput {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 16px;
+            font-family: inherit;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
         .plotWrap {
             width: 100%;
         }
@@ -192,7 +215,7 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v2.4.1 (10/20/2026)</h1>
+    <h1>Data Scanner v2.4.2 (10/20/2026)</h1>
     <div class="app">
         <section class="cameraSection">
             <div class="cameraWrap">
@@ -208,6 +231,11 @@
             <textarea id="textarea" placeholder="Scanned QR code data will appear here..."></textarea>
             <button id="copyButton">Copy to Clipboard</button>
             <button id="clearButton">Clear</button>
+            <div class="fileNameField">
+                <label for="fileNameInput">File name</label>
+                <input type="text" id="fileNameInput" value="EXP00Data.csv"
+                       autocomplete="off" autocapitalize="off" spellcheck="false">
+            </div>
             <button id="saveButton">Save to File</button>
             <button id="plotButton" class="plotButton">XY Plot</button>
             <button id="plotButton2" class="plotButton">XYY Plot</button>
@@ -603,12 +631,17 @@
             Plotly.purge(plotArea);
         });
 
-        // Local time stamp safe for file names (no colons or slashes)
-        function timestampForFileName(date = new Date()) {
-            const pad = (value) => String(value).padStart(2, '0');
-            const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-            const time = `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
-            return `${day}_${time}`;
+        // Default and sanitized file names for the scanned data download
+        const DEFAULT_FILE_NAME = 'EXP00Data.csv';
+
+        function normalizeFileName(raw) {
+            let name = (raw || '').trim();
+            name = name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+                       .replace(/\s+/g, ' ')
+                       .replace(/^[.\s]+|[.\s]+$/g, '');
+            if (!name) return DEFAULT_FILE_NAME;
+            if (!/\.(csv|tsv|txt)$/i.test(name)) name += '.csv';
+            return name.slice(0, 120);
         }
 
         saveButton.addEventListener('click', () => {
@@ -618,7 +651,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `scanned_data_${timestampForFileName()}.csv`;
+                a.download = normalizeFileName(document.getElementById('fileNameInput').value);
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
