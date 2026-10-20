@@ -192,7 +192,7 @@
     </style>
 </head>
 <body>
-    <h1>Data Scanner v2.4.0 (10/18/2026)</h1>
+    <h1>Data Scanner v2.4.1 (10/18/2026)</h1>
     <div class="app">
         <section class="cameraSection">
             <div class="cameraWrap">
@@ -603,6 +603,14 @@
             Plotly.purge(plotArea);
         });
 
+        // Local time stamp safe for file names (no colons or slashes)
+        function timestampForFileName(date = new Date()) {
+            const pad = (value) => String(value).padStart(2, '0');
+            const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+            const time = `${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+            return `${day}_${time}`;
+        }
+
         saveButton.addEventListener('click', () => {
             const data = textarea.value.trim();
             if (data) {
@@ -610,7 +618,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'scanned_data.csv';
+                a.download = `scanned_data_${timestampForFileName()}.csv`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);

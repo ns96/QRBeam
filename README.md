@@ -6,7 +6,7 @@ This web application leverages the camera capabilities of smartphones to decode 
 
 ## Features
 
-Current version: **v2.4.0 (10/18/2026)**
+Current version: **v2.4.1 (10/18/2026)**
 
 ### Data Sender ([index.html](https://ns96.github.io/QRBeam/index.html))
 
@@ -27,7 +27,7 @@ Current version: **v2.4.0 (10/18/2026)**
 * Tracks progress as codes arrive (for example `QR Code 3 of 12`). When every code in the set has been scanned it announces **All N QR codes scanned**, plays a two-tone completion beep, and ignores further reads until **Clear** is pressed. Codes generated before v2.3.0 carry no total count; they still scan, and completion is detected when the sender loops back to the first code.
 * Validates the sequence number of every code, highlighting each read in the camera overlay: green for accepted, yellow for a code that was already scanned, and red for an out-of-sequence or non-QRBeam code.
 * **Stop Camera** / **Start Camera** releases and re-acquires the camera without reloading the page, and camera permission problems are reported on the page instead of only in the console.
-* Audio confirmation for each accepted code; the scanned data can be copied to the clipboard, saved to a file, or plotted (XY, XYY, or bar chart).
+* Audio confirmation for each accepted code; the scanned data can be copied to the clipboard, saved to a file, or plotted (XY, XYY, or bar chart). Saved files are named `scanned_data_YYYY-MM-DD_HH-MM-SS.csv` using the device's local time, so repeated saves never overwrite each other.
 
 ## Installation and Usage
 Download the [latest release](https://github.com/ns96/QRBeam/releases), then unzip QRBeam.zip on a computer with data to be transferred. Next, open the QRBeam folder, then double-click on the index.html file. This will open the page which allows for encoding data, as well as provide a QR code which links to the companion decoding web page to be opened on the smartphone.
